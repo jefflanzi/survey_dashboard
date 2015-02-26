@@ -1,0 +1,1 @@
+This folder is for uploading files (e.g. logos/images) that should be served to a web browser
