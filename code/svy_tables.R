@@ -16,8 +16,8 @@ svy_table <- function(x, qid, segment = "overall", series = NULL, freq = F) {
    #determine qtype
    qtype <- q_types[q_types$qid == qid, "qtype"]
    
-   #label attributes if appropriate
-   q <- qstr[[which(names(qstr) == qid)]]
+   #label sqs if appropriate
+   if(!qtype == "single_choice") q <- qstr[[which(names(qstr) == qid)]]
    
    if(qtype == "ranking") {
       mdata$value <- as.factor(mdata$value)
@@ -57,7 +57,7 @@ svy_table <- function(x, qid, segment = "overall", series = NULL, freq = F) {
 
 #tabulate data from single choice questions
 single_choice <- function(mdata, qid, segment = "overall", series = NULL) {
-   
+   require(reshape2)
    qtable <- dcast(mdata, value ~ segment, length)
    names(qtable) <- gsub("value", "sq", names(qtable))
    
@@ -72,7 +72,7 @@ single_choice <- function(mdata, qid, segment = "overall", series = NULL) {
 
 #tabulate data from ranking questions
 ranking <- function(mdata, qid, segment = "overall", series = NULL) {
-   
+   require(reshape2)
    qtable <- dcast(mdata, value ~ segment, length)
    names(qtable) <- gsub("value", "sq", names(qtable))
    
@@ -87,7 +87,7 @@ ranking <- function(mdata, qid, segment = "overall", series = NULL) {
 
 # likert using mean of scale values
 likert_avg <- function(mdata, qid, segment = "overall", series = NULL) {
-
+        require(reshape2)
         # tabulate data
         qtable <- dcast(mdata, sq ~ segment, mean)        
         return(qtable)        
@@ -95,7 +95,7 @@ likert_avg <- function(mdata, qid, segment = "overall", series = NULL) {
 
 # likert using sum of predefined positive values
 likert_sum <- function(mdata, qid, segment = "overall", series = NULL) {
-
+        require(reshape2)
         #aggregation function for dcast
         l_sum <- function(x) {
                 length(grep(paste(likert_pos, collapse="|"), x))/length(x)
@@ -109,7 +109,7 @@ likert_sum <- function(mdata, qid, segment = "overall", series = NULL) {
 
 # tabulate data from multiple choice questions
 multiple_choice <- function(mdata, qid, segment = "overall", series = NULL, freq = F) {
-        
+        require(reshape2)
         #tabulate data
         if(freq == T) {
                 qtable <- dcast(mdata, sq ~ segment, function(x) sum(x == 1))
@@ -144,12 +144,12 @@ free_text <- function(mdata, qid = NULL, segment = "overall", series = NULL) {
 
 #calculate NPS score
 nps <- function(mdata, qid, segment = "overall", series = NULL) {
-   
-   #    nps_score <- function(x) {
-   #       x <- as.numeric(x)
-   #       (sum(x >= 9)/length(x)) - (sum(x <= 6)/length(x))
-   #    }
-   
-   dcast(mdata, value ~ segment, length)
+        require(reshape2)
+        #    nps_score <- function(x) {
+        #       x <- as.numeric(x)
+        #       (sum(x >= 9)/length(x)) - (sum(x <= 6)/length(x))
+        #    }
+        
+        dcast(mdata, value ~ segment, length)
 }
 

@@ -18,13 +18,7 @@ shinyUI(fluidPage(
                          choices = segments, #defined in Data Prep                         
                          selected = "none")
       )
-      
-      #       column(4, 
-      #              checkboxGroupInput("series", 
-      #                                 label = "Display data series for:",
-      #                                 choices = c("Overall", "test1", "test1", "test3")
-      #              )
-      #       )
+
    ),
    
    hr(), 
