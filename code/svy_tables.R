@@ -41,7 +41,7 @@ svy_table <- function(x, qid, segment = "overall", series = NULL, freq = F) {
    )
    
    #sort table by first numerical column
-   if(qtype != "free_text") { 
+   if(!(qtype %in% c("free_text", "nps"))) { 
       
       #reorder attributes and convert attributes to ordered factor   
       qtable[,1] <- reorder(qtable[,1], qtable[,2], order = T)
@@ -145,11 +145,25 @@ free_text <- function(mdata, qid = NULL, segment = "overall", series = NULL) {
 #calculate NPS score
 nps <- function(mdata, qid, segment = "overall", series = NULL) {
         require(reshape2)
+        require(dplyr)
         #    nps_score <- function(x) {
         #       x <- as.numeric(x)
         #       (sum(x >= 9)/length(x)) - (sum(x <= 6)/length(x))
-        #    }
+        #    }        
         
-        dcast(mdata, value ~ segment, length)
+        #just use single choice table with sorting n10:n0 instead
+        mdata$value <- factor(mdata$value, levels = paste0(0:10), ordered = T)
+        
+        qtable <- dcast(mdata, value ~ segment, length)
+        names(qtable) <- gsub("value", "sq", names(qtable))
+        qtable <- arrange(qtable, desc(as.numeric(sq)))
+        
+        #reformat frequency to percentages
+        numcols <- which(sapply(qtable, is.numeric))
+        if(length(numcols) > 1) {
+                qtable[, numcols] <- sapply(qtable[, numcols], function(x) x/sum(x))
+        } else qtable[, numcols]  <- qtable[, numcols]/sum(qtable[, numcols])
+        
+        return(qtable)
 }
 

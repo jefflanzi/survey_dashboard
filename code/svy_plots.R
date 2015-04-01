@@ -5,8 +5,6 @@ svy_plot <- function(x, qid, segment = "overall", series = NULL, freq = F) {
    #tabulate question data
    qtable <- svy_table(x, qid, segment, series)
    
-   #attribute_plot(qtable)
-   
    #identify the question type
    qtype <- q_types[q_types$qid == qid, "qtype"]
    
@@ -20,7 +18,7 @@ svy_plot <- function(x, qid, segment = "overall", series = NULL, freq = F) {
 
 line_plot <- function(qtable) {
    require(reshape2)
-   require(plyr)   
+   require(ggplot2)
    #prepare data for ggplot
    gdata <- melt(qtable, id.vars = "sq")
    
@@ -34,8 +32,7 @@ line_plot <- function(qtable) {
 
 #single_bar
 simple_bar <- function(qtable) {
-   require(ggplot2)
-   
+   require(ggplot2)   
    ggplot(qtable, aes(x = sq, y = overall)) +
       geom_bar(stat = "identity") +
       geom_text(aes(label = round(overall, 2)), hjust = 1.5, color = "white", fontface = "bold") +
