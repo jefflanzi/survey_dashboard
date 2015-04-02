@@ -1,12 +1,16 @@
 ## IMPORT DATA FILES
-library(data.table)
 library(dplyr)
 # import survey data
-data <- readRDS("data/ycod client completes with sales.RDS")
+data <- read.csv("data/survey_completes.csv", header = T, na.strings = c("NA", ""),
+                 stringsAsFactors = F)
+
+# remove NA columns e.g. for rank questions which don't rank all options
 data <- select(data, which(!apply(data, 2, function(x) all(is.na(x)))))
+# remove survey imcompletes
+data <- filter(data, !is.na(submitdate))
 
 # import survey meta structure
-meta <- read.table("data/survey_meta_data.txt", header = T, sep = "\t", 
+meta <- read.table("data/meta_data.txt", header = T, sep = "\t", 
                    quote = "", stringsAsFactors = F, na.strings = "")
 meta <- select(meta, which(!apply(meta, 2, function(x) all(is.na(x)))))
 
@@ -14,7 +18,7 @@ meta <- select(meta, which(!apply(meta, 2, function(x) all(is.na(x)))))
 q_types <- read.csv("data/qtypes.csv", stringsAsFactors = F)
 
 # positive likert value strings for grep
-likert_pos <- c("7", "6", "5", "p1", "p2")
+likert_pos <- c("Extremely", "Very")
 
 ## PREPARE DATA
 
@@ -22,10 +26,11 @@ likert_pos <- c("7", "6", "5", "p1", "p2")
 survey_title <- filter(meta, name == "surveyls_title")[["text"]]
 
 # clean variable names
-setnames(data, gsub("\\.$", "", names(data)))
+names(data) <- gsub("\\.$", "", names(data))
 
 # add overall column for overall segmentation
-data$overall <- rep("overall", nrow(data))
+# data$overall <- rep("overall", nrow(data))
+# this needs to be deprecated and replaced with a better handling method
 
 # remove html from meta text
 # long term should use the html to format text in dashboard
@@ -41,17 +46,16 @@ qstr <- lapply(qstr, qstr_sq_labels)
 segments <- c("none", q_types[q_types$segment == 1, "shortname"])
 
 # convert single choice answers to factors
+## this should be made into a function
 scqids <- qoverview[qoverview$type.scale == "L", "name"]
 for (i in seq_along(scqids)) {
         qid <- scqids[i]
-        qcol <- q_cols(data, qid)
-        #   set(data, j = qcols, as.factor(qcol))
-        data[[qcol]]  <- as.factor(data[[qcol]])
-        q <- qstr[[which(names(qstr) == qid)]]   
-        matches <- match(levels(data[[qcol]]), q[q$class == "A", "name"])
-        levels(data[[qcol]]) <- q[q$class == "A", "text"][matches]  
+        qcol <- q_cols(data, qid)        
+        q <- qstr[[which(names(qstr) == qid)]]
+        data[[qcol]] <- factor(data[[qcol]], levels = q[q$class == "A", "text"])
 }
-rm(scqids, qid, qcol, q, matches)
+
+rm(scqids, qid, qcol, q, i)
 
 #define colors
 bbred <- "#DA291C"
