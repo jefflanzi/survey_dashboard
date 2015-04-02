@@ -8,6 +8,8 @@ data <- read.csv("data/survey_completes.csv", header = T, na.strings = c("NA", "
 data <- select(data, which(!apply(data, 2, function(x) all(is.na(x)))))
 # remove survey imcompletes
 data <- filter(data, !is.na(submitdate))
+# clean variable names
+names(data) <- gsub("\\.$", "", names(data))
 
 # import survey meta structure
 meta <- read.table("data/meta_data.txt", header = T, sep = "\t", 
@@ -25,11 +27,8 @@ likert_pos <- c("Extremely", "Very")
 #get survey name
 survey_title <- filter(meta, name == "surveyls_title")[["text"]]
 
-# clean variable names
-names(data) <- gsub("\\.$", "", names(data))
-
 # add overall column for overall segmentation
-# data$overall <- rep("overall", nrow(data))
+data$overall <- rep("overall", nrow(data))
 # this needs to be deprecated and replaced with a better handling method
 
 # remove html from meta text

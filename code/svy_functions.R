@@ -1,8 +1,3 @@
-# import a limesurvey survey strcuture in tabular form (.txt.)
-read_meta <- function(metafile) {
-   read.table(metafile, header = T, sep = "\t", quote = "", stringsAsFactors = F)
-}
-   
 # identify all subquestion column indexes in raw data that make up a single question
 q_cols <- function(x = data, qids) {  
         qcols <- grep(paste0("^", qids, "($|[._])", collapse = "|"), names(data))
@@ -33,12 +28,11 @@ q_str <- function(x = meta) {
 
 #reshape question data to long form
 qmelt <- function(data, qid, segment = "overall") {
-        require(reshape2)
-        require(data.table)
+        require(reshape2)        
         qcols <- q_cols(data, qid)
         scols <- q_cols(data, segment)
         mdata <- melt(data, id.vars = scols, measure.vars = qcols, na.rm = T, variable.name = "sq")
-        setnames(mdata, segment, "segment")        
+        names(mdata) <- gsub(segment, "segment", names(mdata))      
         return(mdata)
 }
 
@@ -76,7 +70,6 @@ qstr_sq_labels <- function(x) {
         sq <- x[x$class == "SQ", "name"]
         sqids <- paste0(qid, ".", sq)
         x[x$class == "SQ", "name"] <- sqids
-        
         return(x)
 }
 
