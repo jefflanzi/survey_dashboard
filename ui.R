@@ -1,7 +1,7 @@
 # ui.R
 
 shinyUI(fluidPage(   
-   titlePanel(survey_title),
+   titlePanel(filter(meta, name == "surveyls_title")[["text"]]),
    fluidRow(
       
       column(4, 

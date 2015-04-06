@@ -1,131 +1,74 @@
-#table wrapper function
-svy_table <- function(x, qid, segment = "overall", series = NULL, freq = F) {
-   
-   require(reshape2)
-   
-   if (segment == "none") segment <- "overall"
-   if (segment == "overall") {
-      stype <- "overall"
-   } else stype <- q_types[q_types$qid == segment, "qtype"]
-   
-   #melt question data   
-   if (stype == "multiple_choice") {
-      mdata <- mc_segment(data, qid, segment)
-   } else mdata <- qmelt(data, qid, segment)
-   
-   #determine qtype
-   qtype <- q_types[q_types$qid == qid, "qtype"]
-   
-   #label sqs if appropriate
-   if(!qtype == "single_choice") q <- qstr[[which(names(qstr) == qid)]]
-   
-   if(qtype == "ranking") {
-      mdata$value <- as.factor(mdata$value)
-      sqmatch <- match(levels(mdata$value), q[q$class == "A", "name"])
-      levels(mdata$value) <- as.character(q[q$class == "A", "text"][sqmatch])
-   } else if (!(qtype %in% c("single_choice", "free_text"))) {      
-      sqmatch <- match(levels(mdata$sq), q[q$class == "SQ", "name"])
-      levels(mdata$sq) <- as.character(q[q$class == "SQ", "text"][sqmatch])
-   }
-   
-   #get tabulated data
-   qtable <- switch(qtype,
-                    single_choice = single_choice(mdata, qid, segment, series),
-                    ranking = ranking(mdata, qid, segment, series),
-                    likert_avg = likert_avg(mdata, qid, segment, series),
-                    likert_sum = likert_sum(mdata, qid, segment, series),
-                    multiple_choice = multiple_choice(mdata, qid, segment, series, freq),
-                    nps = nps(mdata, qid, segment, series),
-                    free_text = free_text(mdata, qid, segment, series),
-                    stop("qtype not supported")
-   )
-   
-   #sort table by first numerical column
-   if(!(qtype %in% c("free_text", "nps"))) { 
-      
-      #reorder attributes and convert attributes to ordered factor   
-      qtable[,1] <- reorder(qtable[,1], qtable[,2], order = T)
-      
-      #sort table
-      qtable <- qtable[order(-qtable[,2]), ]
-   }
-   
-   return(qtable)
-}
+##load required packages
+library(magrittr)
+library(dplyr)
+library(tidyr)
 
+# wrapper function for selecting table type depending on q_types as defined in qtypes.csv
+svy_table <- function(data, qid, segment = "overall", freq = FALSE) {
 
-
-#tabulate data from single choice questions
-single_choice <- function(mdata, qid, segment = "overall", series = NULL) {
-   require(reshape2)
-   qtable <- dcast(mdata, value ~ segment, length)
-   names(qtable) <- gsub("value", "sq", names(qtable))
-   
-   #reformat frequency to percentages
-   numcols <- which(sapply(qtable, is.numeric))
-   if(length(numcols) > 1) {
-      qtable[, numcols] <- sapply(qtable[, numcols], function(x) x/sum(x))
-   } else qtable[, numcols]  <- qtable[, numcols]/sum(qtable[, numcols])
-   
-   return(qtable)
-}
-
-#tabulate data from ranking questions
-ranking <- function(mdata, qid, segment = "overall", series = NULL) {
-   require(reshape2)
-   qtable <- dcast(mdata, value ~ segment, length)
-   names(qtable) <- gsub("value", "sq", names(qtable))
-   
-   #reformat frequency to percentages
-   numcols <- which(sapply(qtable, is.numeric))
-   if(length(numcols) > 1) {
-      qtable[, numcols] <- sapply(qtable[, numcols], function(x) x/sum(x)*5)
-   } else qtable[, numcols]  <- qtable[, numcols]/sum(qtable[, numcols])*5
-   
-   return(qtable)
-}
-
-# likert using mean of scale values
-likert_avg <- function(mdata, qid, segment = "overall", series = NULL) {
-        require(reshape2)
-        # tabulate data
-        qtable <- dcast(mdata, sq ~ segment, mean)        
-        return(qtable)        
-}
-
-# likert using sum of predefined positive values
-likert_sum <- function(mdata, qid, segment = "overall", series = NULL) {
-        require(reshape2)
-        #aggregation function for dcast
-        l_sum <- function(x) {
-                length(grep(paste(likert_pos, collapse="|"), x))/length(x)
-        }
-        
+        #gather question and segment data in long form
+        qdata <- qmelt(data, qid, segment)
+                
         #tabulate data
-        qtable <- dcast(mdata, sq ~ segment, l_sum)
+        qtype <- q_types[q_types$qid == qid, "qtype"]
+        qtable <- switch(qtype,
+                         free_text = free_text(qdata),
+                         single_choice = single_choice(qdata, qid, segment, freq),
+                         #multiple_choice = single_choice(...),
+                         likert_sum = likert_sum(qdata, qid, segment, freq),
+                         likert_avg = likert_avg(qdata, qid, segment, freq),
+                         #nps = single_choice(...),
+                         stop("invalid question type")
+        )
         
         return(qtable)
 }
-
-# tabulate data from multiple choice questions
-multiple_choice <- function(mdata, qid, segment = "overall", series = NULL, freq = F) {
-        require(reshape2)
-        #tabulate data
-        if(freq == T) {
-                qtable <- dcast(mdata, sq ~ segment, function(x) sum(x == 1))
-                return(qtable)
+       
+# raw frequencies/percentages table
+single_choice <- function(qdata, qid, segment = "overall", freq = FALSE) {
+        
+        # summarise data from long form        
+        qtable <- qdata %>%         
+                group_by(segment, answer) %>%
+                summarise(value = length(answer))
+        
+        # calculate percentages if pct == TRUE
+        if (freq == FALSE) {
+                qtable %<>%
+                        group_by(segment) %>%
+                        mutate(value = round(value/sum(value), 3))
         }
         
-        qtable <- dcast(mdata, sq ~ segment, function(x) sum(x)/length(x))   
+        spread(qtable, segment, value, drop = F)
         
-        return(qtable)
 }
 
-free_text <- function(mdata, qid = NULL, segment = "overall", series = NULL) {
-        require(tm)
+# average rating
+likert_avg <- function(qdata, qid, segment = "overall", freq = FALSE) {
+        
+        qtable <- qdata %>%
+                group_by(segment, sq) %>%
+                summarise(value = round(mean(as.numeric(answer)), 2)) %>%
+                spread(segment, value, drop = F)
+        
+}
+
+# percentage of agreement
+likert_sum <- function(qdata, qid, segment = "overall", freq = FALSE) {
+        
+        qtable <- qdata %>% 
+                group_by(segment, sq) %>%
+                summarise(value = round(sum(grepl(likert_pos, answer))/length(sq), 3)) %>%
+                spread(segment, value, drop = F)
+        
+}
+
+# generate word counts from raw text
+free_text <- function(qdata) {
+        library(tm)
         
         #transform the text
-        words <- tolower(mdata$value)
+        words <- tolower(qdata$answer)
         words <- removePunctuation(words)
         words <- removeWords(words, stopwords("english"))
         words <- stripWhitespace(words)
@@ -138,32 +81,5 @@ free_text <- function(mdata, qid = NULL, segment = "overall", series = NULL) {
         m <- as.matrix(tdm)
         
         #word counts
-        data.frame(sort(rowSums(m), decreasing = T))        
+        data.frame(sort(rowSums(m), decreasing = T))    
 }
-        
-
-#calculate NPS score
-nps <- function(mdata, qid, segment = "overall", series = NULL) {
-        require(reshape2)
-        require(dplyr)
-        #    nps_score <- function(x) {
-        #       x <- as.numeric(x)
-        #       (sum(x >= 9)/length(x)) - (sum(x <= 6)/length(x))
-        #    }        
-        
-        #just use single choice table with sorting n10:n0 instead
-        mdata$value <- factor(mdata$value, levels = paste0(0:10), ordered = T)
-        
-        qtable <- dcast(mdata, value ~ segment, length)
-        names(qtable) <- gsub("value", "sq", names(qtable))
-        qtable <- arrange(qtable, desc(as.numeric(sq)))
-        
-        #reformat frequency to percentages
-        numcols <- which(sapply(qtable, is.numeric))
-        if(length(numcols) > 1) {
-                qtable[, numcols] <- sapply(qtable[, numcols], function(x) x/sum(x))
-        } else qtable[, numcols]  <- qtable[, numcols]/sum(qtable[, numcols])
-        
-        return(qtable)
-}
-

@@ -1,5 +1,5 @@
 # identify all subquestion column indexes in raw data that make up a single question
-q_cols <- function(x = data, qids) {  
+q_cols <- function(qids, x = data) {  
         qcols <- grep(paste0("^", qids, "($|[._])", collapse = "|"), names(data))
         other <- qcols[grep("other", qcols)]
         if (length(other) > 0) {qcols <- qcols[-other]}
@@ -27,20 +27,33 @@ q_str <- function(x = meta) {
 }
 
 #reshape question data to long form
-qmelt <- function(data, qid, segment = "overall") {
-        require(reshape2)        
-        qcols <- q_cols(data, qid)
-        scols <- q_cols(data, segment)
-        mdata <- melt(data, id.vars = scols, measure.vars = qcols, na.rm = T, variable.name = "sq")
-        names(mdata) <- gsub(segment, "segment", names(mdata))      
-        return(mdata)
+qmelt <- function(data, qid, segment = "overall", sqlabs = TRUE) {
+        require(dplyr)
+        require(tidyr)
+        require(magrittr)
+        
+        qdata <- select(data, q_cols(c(qid, segment))) %>%
+                rename_("segment" = segment) %>%
+                gather(sq, answer, -segment, na.rm = T)
+        
+        # preserve factor levels
+        if(is.factor(data[[q_cols(qid)[1]]])) {
+                qdata <- mutate(qdata, answer = factor(answer, levels = levels(data[[q_cols(qid)[1]]])))
+        }
+        
+        # replace subquestion codes with descriptive labels
+        if (sqlabs == TRUE) {
+                q <- filter(qstr[[qid]], class == "SQ")
+                qdata %<>% mutate(sq = factor(sq, levels = q$name, labels = q$text))
+        }
+        
+        return(qdata)
 }
 
 #qmelt with multiple choice segmentation
 mc_segment <- function(data, qid, segment = "overall") {      
-        #get column indexes
-        require(reshape2)
         require(dplyr)
+        require(reshape2)
         
         qdata <- select(data, q_cols(data, c("id", qid)))
         sdata <- select(data, q_cols(data, c("id", segment)))
@@ -68,7 +81,7 @@ sq_labels <- function(sqids) {
 qstr_sq_labels <- function(x) {
         qid <- x[x$class == "Q", "name"]
         sq <- x[x$class == "SQ", "name"]
-        sqids <- paste0(qid, ".", sq)
+        sqids <- paste0(qid, "_", sq)
         x[x$class == "SQ", "name"] <- sqids
         return(x)
 }

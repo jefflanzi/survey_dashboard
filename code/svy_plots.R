@@ -1,9 +1,9 @@
 library(ggplot2)
 #plotting wrapper function
-svy_plot <- function(x, qid, segment = "overall", series = NULL, freq = F) {
+svy_plot <- function(x, qid, segment = "overall", freq = FALSE) {
    
    #tabulate question data
-   qtable <- svy_table(x, qid, segment, series)
+   qtable <- svy_table(x, qid, segment)
    
    #identify the question type
    qtype <- q_types[q_types$qid == qid, "qtype"]
