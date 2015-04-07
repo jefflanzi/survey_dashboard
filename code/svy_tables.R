@@ -4,12 +4,13 @@ library(dplyr)
 library(tidyr)
 
 # wrapper function for selecting table type depending on q_types as defined in qtypes.csv
-svy_table <- function(data, qid, segment = "overall", freq = FALSE) {
+# spread == FALSE allows passing long form data to svy_plot function
+svy_table <- function(data, qid, segment = "overall", freq = FALSE, spread = TRUE) {
 
         #gather question and segment data in long form
         qdata <- qmelt(data, qid, segment)
                 
-        #tabulate data
+        #summarise data
         qtype <- q_types[q_types$qid == qid, "qtype"]
         qtable <- switch(qtype,
                          free_text = free_text(qdata),
@@ -21,16 +22,24 @@ svy_table <- function(data, qid, segment = "overall", freq = FALSE) {
                          stop("invalid question type")
         )
         
+        if (spread == TRUE & qtype != "free_text") {
+                qtable %<>% spread(segment, value, fill = 0, drop = F)
+        }
+        
         return(qtable)
 }
        
 # raw frequencies/percentages table
 single_choice <- function(qdata, qid, segment = "overall", freq = FALSE) {
         
+        if (segment == qid) {stop("Question and Segment cannot have the same input")}
+        
         # summarise data from long form        
         qtable <- qdata %>%         
                 group_by(segment, answer) %>%
-                summarise(value = length(answer))
+                summarise(value = length(answer)) %>%
+                #rename answer to sq to stay consistent with other tables
+                rename(sq = answer)
         
         # calculate percentages if pct == TRUE
         if (freq == FALSE) {
@@ -39,8 +48,7 @@ single_choice <- function(qdata, qid, segment = "overall", freq = FALSE) {
                         mutate(value = round(value/sum(value), 3))
         }
         
-        spread(qtable, segment, value, drop = F)
-        
+        return(qtable)        
 }
 
 # average rating
@@ -48,9 +56,16 @@ likert_avg <- function(qdata, qid, segment = "overall", freq = FALSE) {
         
         qtable <- qdata %>%
                 group_by(segment, sq) %>%
-                summarise(value = round(mean(as.numeric(answer)), 2)) %>%
-                spread(segment, value, drop = F)
+                summarise(value = round(mean(as.numeric(answer)), 2))
+                
+        #sort based on overall average
+        sqorder <- qtable %>% group_by(sq) %>%
+                summarise(value = mean(value)) %>%
+                arrange(value)
         
+        qtable %<>% mutate(sq = factor(sq, levels = sqorder$sq))
+        
+        return(qtable)
 }
 
 # percentage of agreement
@@ -59,8 +74,9 @@ likert_sum <- function(qdata, qid, segment = "overall", freq = FALSE) {
         qtable <- qdata %>% 
                 group_by(segment, sq) %>%
                 summarise(value = round(sum(grepl(likert_pos, answer))/length(sq), 3)) %>%
-                spread(segment, value, drop = F)
+                arrange(segment, desc(value))
         
+        return(qtable)        
 }
 
 # generate word counts from raw text

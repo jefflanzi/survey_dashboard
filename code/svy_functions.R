@@ -42,7 +42,7 @@ qmelt <- function(data, qid, segment = "overall", sqlabs = TRUE) {
         }
         
         # replace subquestion codes with descriptive labels
-        if (sqlabs == TRUE) {
+        if (sqlabs == TRUE & length(unique(qdata$sq)) > 1) {
                 q <- filter(qstr[[qid]], class == "SQ")
                 qdata %<>% mutate(sq = factor(sq, levels = q$name, labels = q$text))
         }
