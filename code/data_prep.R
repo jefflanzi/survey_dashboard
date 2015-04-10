@@ -9,8 +9,7 @@ data <- readRDS("data/survey_completes.RDS")
 
 # remove NA columns e.g. for rank questions which don't rank all options
 data <- select(data, which(!apply(data, 2, function(x) all(is.na(x)))))
-# remove survey imcompletes
-data <- filter(data, !is.na(submitdate))
+
 # clean variable names
 names(data) <- gsub("\\.$", "", names(data))
 
@@ -21,9 +20,6 @@ meta <- select(meta, which(!apply(meta, 2, function(x) all(is.na(x)))))
 
 # classify qtypes - required for svy_table subfunction selection
 q_types <- read.csv("data/qtypes.csv", stringsAsFactors = F)
-
-# positive likert value strings as regex for grep
-likert_pos <- paste0(c("Extremely", "Very", "More", "Most"), collapse = "|")
 
 ## PREPARE DATA
 
@@ -50,3 +46,6 @@ segments <- c("none", q_types[q_types$segment == 1, "shortname"])
 #define colors
 bbred <- "#DA291C"
 bbyellow <- "#FFD100"
+
+# positive likert value strings as regex for grep
+likert_pos <- paste0(c("Extremely", "Very", "More", "Most", "Agree"), collapse = "|")

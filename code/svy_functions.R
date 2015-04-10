@@ -1,7 +1,7 @@
 # identify all subquestion column indexes in raw data that make up a single question
 q_cols <- function(qids, x = data) {  
         qcols <- grep(paste0("^", qids, "($|[._])", collapse = "|"), names(data))
-        other <- qcols[grep("other", qcols)]
+        other <- grep("other", names(data)[qcols])        
         if (length(other) > 0) {qcols <- qcols[-other]}
         return(qcols)
 }
@@ -91,13 +91,36 @@ remove_html <- function(x) {
         gsub("<.*?>", "", x)
 }
 
+#export table report
+table_export <- function(destfile) {
+        
+        require(xlsx)
+        
+        wb <- createWorkbook()
+        q <- createSheet(wb, sheetName = "question_overview")
+        addDataFrame(qoverview, q)
+        
+        x <- sapply(q_types$qid, function(x) svy_table(data, qid = x))
+        
+        for(i in 1:length(x)) {
+                sheet <- createSheet(wb, sheetName = names(x)[i])
+                addDataFrame(as.data.frame(x[[i]]), sheet)
+        }
+        
+        saveWorkbook(wb, destfile)        
+}
+        
+
 #write a list of dataframes to an excel workbook
 write_workbook <- function(x, destfile) {
         require(xlsx)
         wb <- createWorkbook()
+        q <- createSheet(wb, sheetName = "question_overview")
+        addDataFrame(qoverview, q)
+        
         for(i in 1:length(x)) {
                 sheet <- createSheet(wb, sheetName = names(x)[i])
-                addDataFrame(as.data.frame(x[[i]]), sheet)
+                addDataFrame(as.data.frame(x[[i]]), sheet, row.names = FALSE)
         }
         
         saveWorkbook(wb, destfile)
