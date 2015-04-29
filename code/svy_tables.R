@@ -16,10 +16,12 @@ svy_table <- function(data, qid, segment = "overall", freq = FALSE, spread = TRU
                          multiple_choice = multiple_choice(data, qid, segment, freq),
                          likert_sum = likert_sum(data, qid, segment, freq),
                          likert_avg = likert_avg(data, qid, segment, freq),
+                         dual_scale = dual_scale(data, qid, segment, freq),
                          array_count = array_count(data, qid, segment, freq),
                          free_text = free_text(data, qid, segment),
+                         numeric_input = numeric_input(data, qid, segment),
                          #nps = single_choice(...),
-                         stop("invalid question type")
+                         stop(paste("invalid question type:", qid, qtype))
         )
         
         if (spread == TRUE & !qtype %in% c("free_text", "word_cloud")) {
@@ -109,6 +111,19 @@ array_count <- function(data, qid, segment = "overall", freq = FALSE) {
                 group_by(sq, answer) %>%
                 summarise(value = n())
         
+        return(qtable)        
+}
+
+dual_scale <- function(data, qid, segment = "overall", freq = FALSE) {
+        # gather question and segment columns
+        qdata <- qmelt(data, qid, segment, sqlabs = FALSE)
+        
+        # summarize
+        qtable <- qdata %>%
+                group_by(segment, sq, answer) %>%
+                summarise(value = n())
+        
+        return(qtable)
 }
 
 # generate word counts from raw text
@@ -145,4 +160,26 @@ free_text <- function(data, qid, segment) {
                 gather(sq, answer, -c(id, segment), na.rm = T) %>%
                 arrange(desc(segment, id))
         
+}
+
+numeric_input <- function(data, qid, segment = "overall", freq = FALSE) {
+        # gather question data
+        qdata <- qmelt(data, qid, segment)
+        
+        # summarise
+        qtable <- qdata %>%
+                group_by(segment) %>%
+                mutate(cuts = cut(answer, breaks = c(-1,25,50,75,100),
+                                   labels = c("0-25%", "25-50%", "50-75%", "75-100%"))) %>%
+                group_by(segment, cuts) %>%
+                summarise(value = length(cuts))              
+                
+                # alternate numeric summary
+#                 summarise(mean = mean(answer),
+#                           min = min(answer),
+#                           max = max(answer),
+#                           SD = sd(answer)) %>%
+#                 gather(measure, value, -segment)
+
+        return(qtable)
 }
