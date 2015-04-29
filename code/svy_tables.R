@@ -13,7 +13,7 @@ svy_table <- function(data, qid, segment = "overall", freq = FALSE, spread = TRU
         qtable <- switch(qtype,
                          word_cloud = Word_count(data, qid, segment),
                          single_choice = single_choice(data, qid, segment, freq),
-                         #multiple_choice = multiple_choice(...),
+                         multiple_choice = multiple_choice(data, qid, segment, freq),
                          likert_sum = likert_sum(data, qid, segment, freq),
                          likert_avg = likert_avg(data, qid, segment, freq),
                          array_count = array_count(data, qid, segment, freq),
@@ -60,8 +60,9 @@ multiple_choice <- function(qdata, qid, segment = "overall", freq = FALSE) {
         qdata <- qmelt(data, qid, segment)
         
         qtable <- qdata %>%
-                group_by(sq, answer) %>%
-                summarise(value = n())
+                group_by(segment, sq) %>%
+                summarise(value = sum(answer == "Yes")) %>%
+                arrange(desc(value))
         
 }
 
