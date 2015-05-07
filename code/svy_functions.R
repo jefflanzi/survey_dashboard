@@ -8,13 +8,13 @@ q_cols <- function(qids, x = data) {
 
 # generate list of question structures from survey structure
 q_str <- function(x = meta) {    
-        #remove groups
+        # remove groups
         x <- x[!x$class == "G", ]   
         
-        #identify primary question rows
+        # identify primary question rows
         rows <- which(x$class == "Q")
         
-        #parse questions into list of data frames
+        # parse questions into list of data frames
         rowlist <- list(NULL)
         for(i in 1:length(rows)) {
                 if(i == length(rows)) {
@@ -26,7 +26,7 @@ q_str <- function(x = meta) {
         lapply(rowlist, function(y){x[y, ]})
 }
 
-#reshape question data to long form
+# reshape question data to long form
 qmelt <- function(data, qid, segment = "overall", sqlabs = TRUE) {
         require(dplyr)
         require(tidyr)
@@ -50,7 +50,7 @@ qmelt <- function(data, qid, segment = "overall", sqlabs = TRUE) {
         return(qdata)
 }
 
-#qmelt with multiple choice segmentation
+# qmelt with multiple choice segmentation
 mc_segment <- function(data, qid, segment = "overall") {      
         require(dplyr)
         require(reshape2)
@@ -58,18 +58,18 @@ mc_segment <- function(data, qid, segment = "overall") {
         qdata <- select(data, q_cols(data, c("id", qid)))
         sdata <- select(data, q_cols(data, c("id", segment)))
 
-        #melt component data sets
+        # melt component data sets
         qmelt <- melt(qdata, id.vars = "id", na.rm = T, variable.name = "sq")
         smelt <- melt(sdata, id.vars = "id", na.rm = T, variable.name = "segment")
 
-        #keep only selected segment values        
+        # keep only selected segment values        
         smelt <- filter(smelt, value == 1) %>% select(-value)
 
-        #merge
+        # merge
         inner_join(qmelt, smelt, by = "id") %>% select(-id)        
 }
 
-#label attributes to match column names
+# label attributes to match column names
 sq_labels <- function(sqids) {      
         if(!is.factor(sqids)) {sqids <- as.factor(sqids)}        
         sqmatch <- match(levels(sqids), meta[meta$class == "SQ", "name"])
@@ -86,12 +86,12 @@ qstr_sq_labels <- function(x) {
         return(x)
 }
 
-#remove html tags
+# remove html tags
 remove_html <- function(x) {
         gsub("<.*?>", "", x)
 }
 
-#export table report
+# export table report
 table_export <- function(destfile) {
         
         require(xlsx)
@@ -111,7 +111,7 @@ table_export <- function(destfile) {
 }
         
 
-#write a list of dataframes to an excel workbook
+# write a list of dataframes to an excel workbook
 write_workbook <- function(x, destfile) {
         require(xlsx)
         wb <- createWorkbook()
@@ -126,5 +126,5 @@ write_workbook <- function(x, destfile) {
         saveWorkbook(wb, destfile)
 }
 
-#paste to clipboard (windows only)
+# paste to clipboard (windows only)
 paste_table <- function(x) {write.table(x, file = "clipboard", sep = "\t")}
