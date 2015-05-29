@@ -3,7 +3,7 @@ library(dplyr)
 source("code/svy_functions.R")
 
 # import data from pre-prepared RDS
-# This RDS is created by running the limesurvey R script 
+# This RDS is created by running the limesurvey R script
 # then merging with client supplied segmentation data
 data <- readRDS("data/survey_completes.RDS")
 
@@ -11,10 +11,10 @@ data <- readRDS("data/survey_completes.RDS")
 data <- select(data, which(!apply(data, 2, function(x) all(is.na(x)))))
 
 # clean variable names
-names(data) <- gsub("\\.$", "", names(data)
+names(data) <- gsub("\\.$", "", names(data))
 
 # import survey meta structure
-meta <- read.table("data/meta_data.txt", header = T, sep = "\t", 
+meta <- read.table("data/meta_data.txt", header = T, sep = "\t",
                    quote = "", stringsAsFactors = F, na.strings = "")
 meta <- select(meta, which(!apply(meta, 2, function(x) all(is.na(x)))))
 
@@ -48,4 +48,4 @@ bbred <- "#DA291C"
 bbyellow <- "#FFD100"
 
 # positive likert value strings as regex for grep
-likert_pos <- paste0(c("Extremely", "Very", "More", "Most", "Agree"), collapse = "|")
+likert_pos <- paste0(c("Extremely", "Very", "More", "Most", "Agree", "5", "6", "7"), collapse = "|")
